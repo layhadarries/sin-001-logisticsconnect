@@ -1,0 +1,14 @@
+## CsvReader ##
+List<String[]> instead of List<String> - why? because the result would be ->
+{"x, y, z" and all the rest of the values in one list} while String[] ->
+{ ["x"], ["y"], ["z"] } (if those were all the rows with values)
+List
+ ↓
+String[]
+ ↓
+String[]
+ ↓
+String[]
+
+why input stream? because we want to place whatever type file (tho we are specifically looking for hugs-global.csv)
+input stream > converts into bytes > input reader > converts into char
