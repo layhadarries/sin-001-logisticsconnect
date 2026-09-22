@@ -9,6 +9,84 @@ String[]
 String[]
  ↓
 String[]
-
+-----------------------------
 why input stream? because we want to place whatever type file (tho we are specifically looking for hugs-global.csv)
 input stream > converts into bytes > input reader > converts into char
+-----------------------------
+"record". very cool, very nice special kind of class:
+normally, you'd have to write a class like this:
+
+private static class CleanedRow {
+    private final String hubId;
+    private final String province;
+    private final String sortingCenter;
+    private final Boolean active;
+
+    public CleanedRow(String hubId, String province,
+                      String sortingCenter, Boolean active) {
+        this.hubId = hubId;
+        this.province = province;
+        this.sortingCenter = sortingCenter;
+        this.active = active;
+    }
+
+    // getters, equals(), hashCode(), toString()...
+}
+
+that's a lot of boilerplate just to hold four values.
+
+a record lets Java generate most of that for you:
+private record CleanedRow(
+    String hubId,
+    String province,
+    String sortingCenter,
+    Boolean active
+) {}
+
+ez
+-----------------------------
+provinces spelling:
+KwaZulu Natal
+KwaZulu-Natal
+Kwa-Zulu Natal
+KWAZULU NATAL
+
+method -> normalizeProvinceSpelling
+(Locale.ROOT) -> if you are lowercasing or uppercasing strings meant for machine interpretation—such as JSON keys, configuration properties, URL parts, or programming identifiers—you should use Locale.ROOT
+
+first letter upper case
+KwaZulu Natal, Kwa-Zulu Natal, KwaZulu-Natal 
+multiple spaces
+trim()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
