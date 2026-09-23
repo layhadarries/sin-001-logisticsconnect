@@ -50,8 +50,6 @@ public class CsvCleaner {
 
             return csvRows.subList(1, csvRows.size()); // skip header row
 
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException("Failed to find hubs-global.csv", e);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read hubs-global.csv", e);
         } catch (CsvValidationException e) {
