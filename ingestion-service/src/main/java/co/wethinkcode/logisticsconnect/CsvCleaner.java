@@ -8,18 +8,12 @@ import java.util.*;
 
 
 public class CsvCleaner {
-    private static final List<String> PROVINCES = List.of(
-            "western cape", "gauteng",
-            "free state", "eastern cape",
-            "limpopo", "northern cape",
-            "mpumalanga", "north west");
     private static final List<String> KZN_PROVINCE = List.of(
             "kwazulu natal",
             "kwa-zulu natal",
             "kwazulu-natal");
-    private static final List<String> UNKNOWN_VAL = List.of("", "n/a", "unknown");
-    private static final List<String> TRUE_VAL = List.of("y", "yes", "1", "true");
-    private static final List<String> FALSE_VAL = List.of("n", "no", "0", "false");
+    private static final Set<String> TRUE_VAL = Set.of("y", "yes", "1", "true");
+    private static final Set<String> FALSE_VAL = Set.of("n", "no", "0", "false");
 
     // main method, loads the csv and cleans it
     public static List<Hub> loadAndClean(InputStream csvStream) {
@@ -28,10 +22,8 @@ public class CsvCleaner {
 
         // [2] clean each row
         List<CleanedRow> cleaned = new ArrayList<>();
-
         for (String[] row : rawCsvLines) {
-            cleaned.add(cleanRow(row));
-        }
+            cleaned.add(cleanRow(row));  }
 
         // [3] fill in missing provinces
         inferMissingProvinces(cleaned);
@@ -69,11 +61,18 @@ public class CsvCleaner {
 
 
     // [2] Iterate through individual rows to clean/filter
-    private record CleanedRow(
-            String hubId,
-            String province,
-            String sortingCenter,
-            Boolean active) {
+    private static class CleanedRow {
+        String hubId;
+        String province;
+        String sortingCenter;
+        Boolean active;
+
+        CleanedRow(String hubId, String province, String sortingCenter, Boolean active) {
+            this.hubId = hubId;
+            this.province = province;
+            this.sortingCenter = sortingCenter;
+            this.active = active;
+        }
     }
 
     private static CleanedRow cleanRow(String[] row) {
@@ -82,14 +81,15 @@ public class CsvCleaner {
 
         // Column 1 = province
         String rawProvince = row[1];
-        String province = normalizeProvince(row[1]);
+        String province = normalizeProvince(rawProvince);
 
-        // Column 2 = sorting centre
+        // Column 2 = sorting center
         String rawSortingCenter = trimWhitespace(row[2]);
         String sortingCenter = titleCase(rawSortingCenter);
 
         // Column 3 = active
-        Boolean active = Boolean.parseBoolean(row[3]);
+        String rawActive = row[3];
+        Boolean active = parseActiveBoolean(rawActive);
 
         // create cleaned row construct
         CleanedRow cleanedRow = new CleanedRow(hubId, province, sortingCenter, active);
@@ -238,11 +238,6 @@ public class CsvCleaner {
             Boolean firstValue,
             Boolean secondValue) {
 
-        // if both values are unknown
-        if (firstValue == null && secondValue == null) {
-            return null;
-        }
-
         // if 1st value is unknown, use 2nd value
         if (firstValue == null) {
             return secondValue;
@@ -253,17 +248,7 @@ public class CsvCleaner {
             return firstValue;
         }
 
-        // if both are true
-        if (firstValue == true && secondValue == true) {
-            return true;
-        }
-
-        // if both are false
-        if (firstValue == false && secondValue == false) {
-            return false;
-        }
-
-        // if one is true other is false, keep the first value
+        // pretty much always use the first val
         return firstValue;
     }
 }

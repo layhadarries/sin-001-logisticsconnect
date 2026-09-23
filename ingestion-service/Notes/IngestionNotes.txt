@@ -59,7 +59,7 @@ KwaZulu Natal, Kwa-Zulu Natal, KwaZulu-Natal
 multiple spaces
 trim()
 
-
+Set over LIst, why? Sets are specifically designed for "does this collection contain this item?"
 
 
 
