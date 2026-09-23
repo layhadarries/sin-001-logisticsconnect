@@ -55,7 +55,7 @@ public class DelayStageServiceApp {
             System.out.println("[delay-stage-service] hub " + hubId + " stage set to " + newStage);
 
             // update latest stage
-            publishStageChange(hubId, newStage);
+            updateStageChange(hubId, newStage);
 
             ctx.status(200).result("Hub " + hubId + " stage updated to " + newStage);
         });
@@ -63,8 +63,7 @@ public class DelayStageServiceApp {
 
     /**
      * Connects to the ActiveMQ broker once at startup and creates a producer
-     * pointed at package-status-topic, ready to publish messages whenever the
-     * POST handler above needs to.
+     * pointed at package-status-topic
      */
     private static void setUpMqProducer() throws JMSException {
         ConnectionFactory connectionFactory = new ActiveMQConnectionFactory(MqConfig.BROKER_URL);
@@ -91,7 +90,7 @@ public class DelayStageServiceApp {
     /**
      * Builds a small JSON message and sends it to package-status-topic.
      */
-    private static void publishStageChange(String hubId, int newStage) {
+    private static void updateStageChange(String hubId, int newStage) {
         String payload = "{\"hubId\":\"" + hubId + "\",\"stage\":" + newStage
                 + ",\"timestamp\":\"" + Instant.now() + "\"}";
 
