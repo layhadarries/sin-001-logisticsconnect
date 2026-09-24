@@ -6,16 +6,11 @@ import io.javalin.Javalin;
 import java.io.InputStream;
 import java.util.List;
 
-// TODO: read and clean src/main/resources/hubs-global.csv
-// (hubs, sorting centers, regional districts data, trim whitespace, fix casing, normalize dates/booleans)
-// and expose the cleaned records here for the other services to consume.
-
 public class IngestionServiceApp {
 
     public static void main(String[] args) {
         List<Hub> cleanedHubs = loadCleanedHubs();
         System.out.println("Loaded " + cleanedHubs.size() + " cleaned hub records.");
-
 
         // create web api server
         Javalin app = Javalin.create().start(7050);
