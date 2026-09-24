@@ -1,35 +1,38 @@
 package co.wethinkcode.logisticsconnect;
 
+import co.wethinkcode.logisticsconnect.mq.MqConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.Javalin;
+import org.apache.activemq.ActiveMQConnectionFactory;
 
+import javax.jms.*;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TransitServiceApp {
 
     private static final String HUB_SERVICE_URL = "http://localhost:7051/hubs/";
-    private static final String DELAY_STAGE_SERVICE_URL = "http://localhost:7052/delay-stage/";
 
-    // amount of hours in a day (constant)
     private static final int BASE_HOURS = 24;
-
-    // each delay stage (0-8) adds this many extra hours to the estimate
-    // eg stage 4 -> 24 + (4 * 2) = 32 hours
     private static final int HOURS_PER_STAGE = 2;
 
-    // one shared HttpClient for the whole service,
     private static final HttpClient httpClient = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    public static void main(String[] args) {
+
+    private static final Map<String, Integer> latestStageByHubId = new ConcurrentHashMap<>();
+
+    public static void main(String[] args) throws JMSException {
+        setUpMqConsumer();
+
         Javalin app = Javalin.create().start(7053);
 
         app.get("/health", ctx -> ctx.result("OK"));
 
-        // eg -> GET /transit/H-500
         app.get("/transit/{hubId}", ctx -> {
             String hubId = ctx.pathParam("hubId").toUpperCase();
 
@@ -39,7 +42,10 @@ public class TransitServiceApp {
                 return;
             }
 
-            int delayStage = fetchDelayStage(hubId);
+            // no REST call here anymore —> just read whatever the MQ
+            // subscriber has most recently stored for this hub,
+            // default to 0 if no update recieved
+            int delayStage = latestStageByHubId.getOrDefault(hubId, 0);
             int estimatedHours = BASE_HOURS + (delayStage * HOURS_PER_STAGE);
 
             TransitEstimate estimate = new TransitEstimate();
@@ -54,11 +60,45 @@ public class TransitServiceApp {
     }
 
     /**
-     * Calls hub-service to look up one hub by ID.
-     * Returns null if the hub doesn't exist (hub-service returned 404) or if
-     * hub-service couldn't be reached at all — either way, the caller above
-     * treats "null" as "this hub isn't available."
+     * Connects to the ActiveMQ broker and subscribes to package-status-topic.
+     * Every time delay-stage-service publishes a change, the message listener
+     * below fires and updates our local cache.
      */
+    private static void setUpMqConsumer() throws JMSException {
+        ConnectionFactory connectionFactory = new ActiveMQConnectionFactory(MqConfig.BROKER_URL);
+        Connection connection = connectionFactory.createConnection();
+        connection.start();
+
+        Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+        Topic topic = session.createTopic(MqConfig.TOPIC);
+        MessageConsumer consumer = session.createConsumer(topic);
+
+        consumer.setMessageListener(message -> {
+            try {
+                if (message instanceof TextMessage textMessage) {
+                    String body = textMessage.getText();
+                    StageUpdateMessage update = mapper.readValue(body, StageUpdateMessage.class);
+                    latestStageByHubId.put(update.getHubId(), update.getStage());
+                    System.out.println("[transit-service] received stage update: " + body);
+                }
+            } catch (Exception e) {
+                System.out.println("Failed to process stage update message: " + e.getMessage());
+            }
+        });
+
+        System.out.println("[transit-service] subscribed to topic '" + MqConfig.TOPIC
+                + "' at " + MqConfig.BROKER_URL);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                consumer.close();
+                session.close();
+                connection.close();
+            } catch (JMSException ignored) {
+            }
+        }));
+    }
+
     private static Hub fetchHub(String hubId) {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(HUB_SERVICE_URL + hubId))
@@ -73,8 +113,8 @@ public class TransitServiceApp {
             return null;
         }
 
+        // http code error handling
         if (response.statusCode() == 404) {
-            // "hub" genuinely doesn't exist —> not an error, just "not found"
             return null;
         }
 
@@ -88,40 +128,6 @@ public class TransitServiceApp {
         } catch (Exception e) {
             System.out.println("Could not parse hub-service response: " + e.getMessage());
             return null;
-        }
-    }
-
-    /**
-     * Calls delay-stage-service to look up the current delay stage for a hub.
-     * Defaults to 0 (no delay) if delay-stage-service can't be reached or the
-     * response can't be parsed, rather than failing the whole /transit request
-     * just because this one piece of information wasn't available.
-     */
-    private static int fetchDelayStage(String hubId) {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(DELAY_STAGE_SERVICE_URL + hubId))
-                .GET()
-                .build();
-
-        HttpResponse<String> response;
-        try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            System.out.println("Could not reach delay-stage-service: " + e.getMessage());
-            return 0;
-        }
-
-        if (response.statusCode() != 200) {
-            System.out.println("delay-stage-service returned unexpected status " + response.statusCode());
-            return 0;
-        }
-
-        try {
-            StageResponse stageResponse = mapper.readValue(response.body(), StageResponse.class);
-            return stageResponse.getStage();
-        } catch (Exception e) {
-            System.out.println("Could not parse delay-stage-service response: " + e.getMessage());
-            return 0;
         }
     }
 }
