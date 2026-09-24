@@ -18,7 +18,7 @@ public class CsvCleaner {
     // main method, loads the csv and cleans it
     public static List<Hub> loadAndClean(InputStream csvStream) {
         // [1] read csv file
-        List<String[]> rawCsvLines = new ArrayList<>();
+        List<String[]> rawCsvLines = readCsv(csvStream);
 
         // [2] clean each row
         List<CleanedRow> cleaned = new ArrayList<>();
