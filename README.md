@@ -1,7 +1,3 @@
-## Write tests
-
-
-
 # LogisticsConnect
 
 ## Overview
