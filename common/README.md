@@ -54,15 +54,21 @@ from their own directories at the project root).
 docker compose ps          # confirm the broker container is healthy
 ```
 
-Once the TODOs below are implemented, verify end-to-end by publishing a message from
-`delay-stage-service` and confirming the consumer(s) receive it — e.g. via logs, or by
-watching the topic in the web console.
+Once the broker is running, verify end-to-end: POST a stage change to
+delay-stage-service and confirm transit-service receives it — either watch
+transit-service's console for `[transit-service] received stage update: ...`,
+or watch the topic directly in the web console.
 
-## TODO
+```
+curl -X POST http://localhost:7052/delay-stage/H-500 \
+  -H "Content-Type: application/json" -d '{"stage": 5}'
+```
 
-- Add `activemq-client` publish logic to `delay-stage-service` on its stage/state-change endpoint.
-- Add `activemq-client` subscriber logic to consumer service(s) above, replacing any
-  direct synchronous calls to `delay-stage-service`.
-- `alertbot` (stretch goal) needs its own subscriber logic too — its `pom.xml`
-  already has the `activemq-client` dependency alongside the other participating
-  services.
+## Status
+
+- `delay-stage-service` publishes to `package-status-topic` on every
+  successful stage update. Implemented.
+- `transit-service` subscribes to `package-status-topic` and caches the
+  latest stage per hub, replacing its earlier direct REST call to
+  delay-stage-service. Implemented.
+- `alertbot` (stretch goal) was not attempted.
