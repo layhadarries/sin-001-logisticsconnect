@@ -63,7 +63,10 @@ there's no single correct answer, but be ready to explain your reasoning.
 ingestion-service/
 ├── pom.xml
 └── src/main/
-    ├── java/co/wethinkcode/logisticsconnect/IngestionServiceApp.java
+    ├── java/co/wethinkcode/logisticsconnect/
+    |   ├──CsvCleaner.java
+    |   ├──Hub.java
+    |   └──IngestionServiceApp.java
     └── resources/hubs-global.csv
 ```
 
@@ -79,8 +82,19 @@ mvn package
 java -jar target/ingestion-service.jar
 ```
 
-Listens on port `7050`. Currently just exposes `/health` — the actual CSV
-parsing/cleaning logic is a TODO.
+Listens on port `7050`.
+
+### Endpoints
+
+| Method | Path | Returns |
+|---|---|---|
+| GET | `/health` | `OK` |
+| GET | `/hubs` | JSON array of cleaned hub records |
+
+On startup, cleans `hubs-global.csv` (18 raw rows) down to 10 unique hub
+records — merging duplicates and resolving conflicting `active` flags by
+majority vote. See `CsvCleaner.java` for the full documented cleaning and
+deduplication policy.
 
 ## Test
 
@@ -88,6 +102,7 @@ No automated tests yet. Manually verify it's up:
 
 ```
 curl http://localhost:7050/health   # -> OK
+curl http://localhost:7050/hubs     # -> JSON array of 10 cleaned hub records
 ```
 
 To add real tests, add JUnit 5 + the Surefire plugin to `pom.xml`, put tests under

@@ -1,3 +1,7 @@
+## Write tests
+
+
+
 # LogisticsConnect
 
 ## Overview
@@ -80,20 +84,37 @@ duplicated into each participating service.
 ```
 logisticsconnect/
 ├── README.md
+├── TESTING.md
 ├── .gitignore
 ├── ingestion-service/          (port 7050)
 │   ├── pom.xml
 │   ├── README.md
 │   └── src/main/
-│       ├── java/co/wethinkcode/logisticsconnect/IngestionServiceApp.java
+│       ├── java/co/wethinkcode/logisticsconnect/
+│       │   ├── IngestionServiceApp.java
+│       │   ├── CsvCleaner.java
+│       │   └── Hub.java
 │       └── resources/hubs-global.csv
 ├── hub-service/          (port 7051)
+│   └── src/main/java/co/wethinkcode/logisticsconnect/
+│       ├── HubServiceApp.java
+│       └── Hub.java
 ├── delay-stage-service/          (port 7052)
+│   └── src/main/java/co/wethinkcode/logisticsconnect/
+│       ├── DelayStageServiceApp.java
+│       ├── StageUpdateRequest.java
+│       └── mq/MqConfig.java
 ├── transit-service/          (port 7053)
+│   └── src/main/java/co/wethinkcode/logisticsconnect/
+│       ├── TransitServiceApp.java
+│       ├── Hub.java
+│       ├── TransitEstimate.java
+│       ├── StageUpdateMessage.java
+│       └── mq/MqConfig.java
 ├── common/
 │   ├── docker-compose.yml
 │   └── README.md
-└── alertbot/          (port 7054)
+└── alertbot/          (port 7054, not attempted)
 ```
 
 ## Build
@@ -118,21 +139,23 @@ find . -name pom.xml -execdir mvn -q package \;
 ## Run
 
 ```
-# ingestion
-cd ingestion-service && mvn package && java -jar target/ingestion-service.jar
-
-# domain services, each in its own terminal
-# terminal 1
-cd hub-service && mvn package && java -jar target/hub-service.jar
-# terminal 2
-cd delay-stage-service && mvn package && java -jar target/delay-stage-service.jar
-# terminal 3
-cd transit-service && mvn package && java -jar target/transit-service.jar
-
-# MQ broker (needed once the MQ-aware services above are wired up)
+# [1] MQ broker — everything else depends on it being up
 cd common && docker compose up -d
 
-# alerting
+# [2] Ingestion
+cd ingestion-service && mvn package && java -jar target/ingestion-service.jar
+
+# [3] Domain services, each in its own terminal
+# - Terminal 1 -
+cd hub-service && mvn package && java -jar target/hub-service.jar
+
+# - Terminal 2 -
+cd delay-stage-service && mvn package && java -jar target/delay-stage-service.jar
+
+# - Terminal 3 -
+cd transit-service && mvn package && java -jar target/transit-service.jar
+
+# [4] Alerting 
 cd alertbot && mvn package && java -jar target/alertbot.jar
 ```
 

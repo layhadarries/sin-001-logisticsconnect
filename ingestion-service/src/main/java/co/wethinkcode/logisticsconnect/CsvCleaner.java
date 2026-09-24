@@ -8,17 +8,16 @@ import java.util.*;
 
 
 public class CsvCleaner {
-    private static final List<String> KZN_PROVINCE = List.of(
-            "kwazulu natal",
-            "kwa-zulu natal",
-            "kwazulu-natal");
+    private static final Set<String> KZN_PROVINCE = Set.of(
+            "kwa zulu natal",
+            "kwazulu natal");
     private static final Set<String> TRUE_VAL = Set.of("y", "yes", "1", "true");
     private static final Set<String> FALSE_VAL = Set.of("n", "no", "0", "false");
 
     // main method, loads the csv and cleans it
     public static List<Hub> loadAndClean(InputStream csvStream) {
         // [1] read csv file
-        List<String[]> rawCsvLines = new ArrayList<>();
+        List<String[]> rawCsvLines = readCsv(csvStream);
 
         // [2] clean each row
         List<CleanedRow> cleaned = new ArrayList<>();
