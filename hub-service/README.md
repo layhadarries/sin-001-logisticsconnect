@@ -12,7 +12,9 @@ parent pom.
 ```
 hub-service/
 ├── pom.xml
-└── src/main/java/co/wethinkcode/logisticsconnect/HubServiceApp.java
+└── src/main/java/co/wethinkcode/logisticsconnect/
+        ├── Hub.java
+        └── HubServiceApp.java
 ```
 
 ## Build
@@ -27,14 +29,28 @@ mvn package
 java -jar target/hub-service.jar
 ```
 
-Listens on port `7051`.
+Listens on port `7051`. On startup, fetches the cleaned hub list from
+ingestion-service (`GET :7050/hubs`) and caches it in memory. If
+ingestion-service isn't reachable yet, hub-service starts anyway with an empty
+list and logs why — restart it once ingestion-service is up.
+
+### Endpoints
+
+| Method | Path | Returns |
+|---|---|---|
+| GET | `/health` | `OK` |
+| GET | `/hubs` | JSON array of all cached hubs |
+| GET | `/hubs/{hubId}` | JSON object for one hub, or `404` if unknown |
 
 ## Test
 
-No automated tests yet. Manually verify it's up:
+**ingestion-service must already be running** (port `7050`) before starting
+hub-service, since it loads its data from there on startup.
 
 ```
-curl http://localhost:7051/health   # -> OK
+curl http://localhost:7051/health          # -> OK
+curl http://localhost:7051/hubs            # -> JSON array of hubs
+curl http://localhost:7051/hubs/H-500      # -> JSON object for H-500
 ```
 
 To add real tests, add JUnit 5 + the Surefire plugin to `pom.xml`, put tests under
